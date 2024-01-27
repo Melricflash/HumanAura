@@ -13,6 +13,9 @@ modelPath2 = "ONNX Models/mobilenet2fixed.onnx"
 # Image path that points to the test frame to be used
 imagePath = "testframe.jpg"
 
+# Video path that points to the video we want to use
+videoPath = "Videos/Browse4.mpg" # browse4.mpg was our test set on evaluation
+
 # Detection Threshold, affects the sensitivity of the bounding boxes that are drawn. Lower threshold = Less confidence needed to display BB
 # Between 0.0 and 1.0
 globalThreshold = 0.65
@@ -53,7 +56,7 @@ def boxDecoder(boxes):
     tempList.append(boxes[0]*imHeight) # ymin * height
     tempList.append(boxes[1]*imWidth) # xmin * width
     tempList.append(boxes[2]*imHeight) # ymax * height
-    tempList.append(boxes[3]*imHeight) # xmax * width
+    tempList.append(boxes[3]*imWidth) # xmax * width
 
     #print(tempList)
     return tempList
@@ -86,7 +89,26 @@ def extractBoundingBoxes(results, threshold):
     #print(len(boundingBoxes[0])) # (2,4) Shape preserved
 
     return(boundingBoxes)
-    
+
+
+def drawBoundingBoxes(boxList):
+    #print(boxList)
+
+    for box in boxList:
+        # Fetch the coordinates we need for each list we have in the boxList
+        ymin = int(box[0])
+        xmin = int(box[1])
+        ymax = int(box[2])
+        xmax = int(box[3])
+
+        # OpenCV wants the order two coordinates to draw a rectangle, (top left) and (bottom right)
+        cv2.rectangle(image, (xmin, ymin), (xmax, ymax), (0, 255, 0), 2)
+
+    # Show the window with the bounding boxes applied to the image
+    cv2.imshow("HumanAura", image)
+
+    cv2.waitKey(10)  # If set to 0, need to press a key to quit
+
 
 
 # Main Loop Here
@@ -98,64 +120,52 @@ sess = ort.InferenceSession(modelPath2)
 input_name = sess.get_inputs()[0].name
 output_name = sess.get_outputs()[0].name
 
-# Fetch the image to be passed into model
-image = cv2.imread(imagePath)
+''' 
+Original Test code to see if I can draw bounding boxes onto a single frame, obsolete as I can do this in a video now
+'''
 
-newInput = preprocessFrame(image)
+# # Fetch the image to be passed into model
+# image = cv2.imread(imagePath)
 
+# newInput = preprocessFrame(image)
 
-# Output Name: detection_anchor_indices
-# Output Shape: [1, 'unk__1094']
-# Output Type: tensor(float)
+# # Output Name: detection_anchor_indices
+# # Output Shape: [1, 'unk__1094']
+# # Output Type: tensor(float)
 
-# Performing inference using the frame
-result = sess.run(None, {input_name: newInput})
+# # Performing inference using the frame
+# result = sess.run(None, {input_name: newInput})
 
-boundingBoxestoDraw = extractBoundingBoxes(result, globalThreshold)
+# boundingBoxestoDraw = extractBoundingBoxes(result, globalThreshold)
 
-print(boundingBoxestoDraw)
+# #print(boundingBoxestoDraw)
 
+# # Attempting to draw bounding boxes onto image
+# drawBoundingBoxes(boundingBoxestoDraw)
 
+# Load the video into memory
+cap = cv2.VideoCapture(videoPath)
 
-
-
-
-
-
-
-
-
-
-
-
-
+# Returns an error if the video has an error
+if not cap.isOpened():
+        print("Error opening video file.")
 
 
-# Get the name of the input so we know how to perform inference on the model
-# input_name = sess.get_inputs()[0].name
-# print(input_name)
+# Main loop to load video and perform inference using the functions
+while True:
+    ret, image = cap.read()
 
-# input_shape = sess.get_inputs()[0].shape
-# print("input shape", input_shape)
+    if not ret:
+        break
 
-# input_type = sess.get_inputs()[0].type
-# print("input type", input_type)
+    newInput = preprocessFrame(image)
+    result = sess.run(None, {input_name: newInput})
+    boundingBoxestoDraw = extractBoundingBoxes(result, globalThreshold)
+    drawBoundingBoxes(boundingBoxestoDraw)
 
-
-# output_name = sess.get_outputs()[0].name
-# print("output name", output_name)
-# output_shape = sess.get_outputs()[0].shape
-# print("output shape", output_shape)
-# output_type = sess.get_outputs()[0].type
-# print("output type", output_type)
-
-
-
-# Test showing the image to output
-# cv2.imshow("Image", image)
-# cv2.waitKey(0)
-# cv2.destroyAllWindows()
-
+# Delete all windows
+cap.release()
+cv2.destroyAllWindows()
 
 
 
