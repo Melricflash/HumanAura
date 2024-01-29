@@ -30,11 +30,13 @@ imWidth = 384
 # Number used to determine if the euclidean distance calculated between two boxes is small enough to be determined the same person.
 # Larger = larger euclidean distance to be identified as the same person.
 # Needs to be set appropriately to avoid false detections
-trackerThreshold = 5
+trackerThreshold = 30
 
 # Currently unused...
 currentBoundingBoxes = [] # Bounding box list for current frame
 previousBoundingBoxes = [] # Bounding box list for previous frame
+
+loggedBoxes = {}
 
 '''
 Helper functions and used by HumanAura
@@ -101,7 +103,7 @@ def extractBoundingBoxes(results, threshold):
 
     return(boundingBoxes)
 
-# Draw Bounding Boxes to the screen
+# Draw Bounding Boxes to the screen, currently being replaced with one that incorporates tracking as well
 def drawBoundingBoxes(boxList):
     #print(boxList)
 
@@ -114,11 +116,13 @@ def drawBoundingBoxes(boxList):
 
         # OpenCV wants the order two coordinates to draw a rectangle, (top left) and (bottom right)
         cv2.rectangle(image, (xmin, ymin), (xmax, ymax), (0, 255, 0), 2)
+        # Draws text on the bounding boxes, replace test with the time counter when function implemented
+        cv2.putText(image, 'test', (xmin, ymin-5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,0,0), 1)
 
     # Show the window with the bounding boxes applied to the image
     cv2.imshow("HumanAura", image)
 
-    cv2.waitKey(30)  # If set to 0, need to press a key to quit
+    cv2.waitKey(0)  # If set to 0, need to press a key to quit, good for debugging
 
 '''
 Functions used for tracking boxes between frames
@@ -132,8 +136,8 @@ def getBoxMidpoint(box):
     ymax = box[2]
     xmax = box[3]
 
-    xcentre = int(((xmin+xmax)/2))
-    ycentre = int(((ymin+ymax)/2))
+    xcentre = ((xmin+xmax)/2)
+    ycentre = ((ymin+ymax)/2)
 
     midpoint = [xcentre, ycentre]
 
@@ -163,6 +167,99 @@ def calculateEuclideanDistance(currentMP, previousMP):
     return ed
 
 
+# Draw Bounding Boxes to the screen, currently being replaced with one that incorporates tracking as well
+def drawBoundingBoxes(boxList):
+    #print(boxList)
+
+    for box in boxList:
+        # Fetch the coordinates we need for each list we have in the boxList
+        ymin = int(box[0])
+        xmin = int(box[1])
+        ymax = int(box[2])
+        xmax = int(box[3])
+
+        # OpenCV wants the order two coordinates to draw a rectangle, (top left) and (bottom right)
+        cv2.rectangle(image, (xmin, ymin), (xmax, ymax), (0, 255, 0), 2)
+        # Draws text on the bounding boxes, replace test with the time counter when function implemented
+        cv2.putText(image, 'test', (xmin, ymin-5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,0,0), 1)
+
+    # Show the window with the bounding boxes applied to the image
+    cv2.imshow("HumanAura", image)
+
+    cv2.waitKey(0)  # If set to 0, need to press a key to quit, good for debugging
+
+
+def trackAndDraw(boxList):
+
+    newMP = []
+    oldMP = []
+    newTrackCounter = 0
+    newFrameCounter = 0
+    tempTuple = ()
+
+    for box in boxList:
+        #print(box)
+
+        # Fetch the coordinates we need for each list we have in the boxList
+        ymin = int(box[0])
+        xmin = int(box[1])
+        ymax = int(box[2])
+        xmax = int(box[3])
+
+        # OpenCV wants the order two coordinates to draw a rectangle, (top left) and (bottom right)
+        # We can draw the rectangle now and do the counter later in the loop
+        cv2.rectangle(image, (xmin, ymin), (xmax, ymax), (0, 255, 0), 2)    
+       
+        currentMP = getBoxMidpoint(box)
+
+        # Only want to compare midpoints if the dictionary is populated
+        if len(loggedBoxes) > 0:
+            #print(loggedBoxes)
+
+            matchFound = False
+            # Compare the current current box midpoint to all tracked bounding boxes in the dictionary, break if we find a match and update the item in the dictionary
+            for previousMP, MPValues in loggedBoxes.items():
+                # Retrieve info out of the value tuple, one is used for tracking time, second is an expiry to remove old values when needed
+                trackCounter, frameCounter = MPValues
+                
+                newFrameCounter = frameCounter
+
+                # Calculate the euclidean distance between the currentMP and selected entry in the dictionary
+                eDistance = calculateEuclideanDistance(currentMP, previousMP)
+                #print(eDistance)
+
+                if eDistance < trackerThreshold:
+                    match = True
+                    # Increment the trackCounter
+                    loggedBoxes[previousMP] = (trackCounter + 1, frameCounter)
+                    cv2.putText(image, str(trackCounter), (xmin, ymin-5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,0,0), 2)
+
+                    newTrackCounter = trackCounter
+                    oldMP = previousMP
+                    break
+
+            if matchFound:
+                # Update the tracked box
+                loggedBoxes[newMP] = loggedBoxes.pop(oldMP)
+
+            if not matchFound:
+                # No match for the frame was found, we add it to the database
+                loggedBoxes[tuple(currentMP)] = (0, newFrameCounter + 1)
+
+        else:
+            # Store into dictionary as our dictiionary is currently empty
+            print("loggedBoxes currently empty, populating...")
+            boxMidpoint = tuple(getBoxMidpoint(box))
+            #print(boxMidpoint)
+            loggedBoxes[boxMidpoint] = (0,0) # Store as a tuple, when we want to modify it, we will update the whole thing.
+
+
+
+    cv2.imshow("HumanAura", image)
+    cv2.waitKey(10)
+    
+
+
 
 '''
 Main Loop: Used for video inference
@@ -182,6 +279,7 @@ cap = cv2.VideoCapture(videoPath)
 if not cap.isOpened():
         print("Error opening video file.")
 
+testCounter = 0
 
 # Main loop to load video and perform inference using the functions
 while True:
@@ -193,7 +291,15 @@ while True:
     newInput = preprocessFrame(image)
     result = sess.run(None, {input_name: newInput})
     boundingBoxestoDraw = extractBoundingBoxes(result, globalThreshold)
-    drawBoundingBoxes(boundingBoxestoDraw)
+
+    #drawBoundingBoxes(boundingBoxestoDraw)
+    trackAndDraw(boundingBoxestoDraw)
+
+    testCounter += 1
+
+    # # Change to debug more frames
+    # if testCounter >= 5:
+    #     break
 
 # Delete all windows
 cap.release()
