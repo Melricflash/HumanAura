@@ -166,36 +166,7 @@ def calculateEuclideanDistance(currentMP, previousMP):
 
     return ed
 
-
-# Draw Bounding Boxes to the screen, currently being replaced with one that incorporates tracking as well
-def drawBoundingBoxes(boxList):
-    #print(boxList)
-
-    for box in boxList:
-        # Fetch the coordinates we need for each list we have in the boxList
-        ymin = int(box[0])
-        xmin = int(box[1])
-        ymax = int(box[2])
-        xmax = int(box[3])
-
-        # OpenCV wants the order two coordinates to draw a rectangle, (top left) and (bottom right)
-        cv2.rectangle(image, (xmin, ymin), (xmax, ymax), (0, 255, 0), 2)
-        # Draws text on the bounding boxes, replace test with the time counter when function implemented
-        cv2.putText(image, 'test', (xmin, ymin-5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,0,0), 1)
-
-    # Show the window with the bounding boxes applied to the image
-    cv2.imshow("HumanAura", image)
-
-    cv2.waitKey(0)  # If set to 0, need to press a key to quit, good for debugging
-
-
 def trackAndDraw(boxList):
-
-    newMP = []
-    oldMP = []
-    newTrackCounter = 0
-    newFrameCounter = 0
-    tempTuple = ()
 
     for box in boxList:
         #print(box)
@@ -222,41 +193,59 @@ def trackAndDraw(boxList):
                 # Retrieve info out of the value tuple, one is used for tracking time, second is an expiry to remove old values when needed
                 trackCounter, frameCounter = MPValues
                 
-                newFrameCounter = frameCounter
-
                 # Calculate the euclidean distance between the currentMP and selected entry in the dictionary
                 eDistance = calculateEuclideanDistance(currentMP, previousMP)
                 #print(eDistance)
 
                 if eDistance < trackerThreshold:
-                    match = True
+                    print("Match was found for box!")
+                    matchFound = True
                     # Increment the trackCounter
-                    loggedBoxes[previousMP] = (trackCounter + 1, frameCounter)
+                    loggedBoxes[previousMP] = (trackCounter + 1, FCounter)
                     cv2.putText(image, str(trackCounter), (xmin, ymin-5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,0,0), 2)
 
-                    newTrackCounter = trackCounter
-                    oldMP = previousMP
                     break
-
-            if matchFound:
-                # Update the tracked box
-                loggedBoxes[newMP] = loggedBoxes.pop(oldMP)
-
+            
+            # FrameCounter will only update if a match was found for that box, allows us to figure out if we need to prune
             if not matchFound:
-                # No match for the frame was found, we add it to the database
-                loggedBoxes[tuple(currentMP)] = (0, newFrameCounter + 1)
+                print("No match was found for box!")
+                # No match for the frame was found, we add it to the database to track later
+                #loggedBoxes[tuple(currentMP)] = (0, newFrameCounter + 1)
+                loggedBoxes[tuple(currentMP)] = (0, FCounter) # Set 0 to set time tracked as 0s, recorded frame as last recorded frame
 
         else:
-            # Store into dictionary as our dictiionary is currently empty
+            # Store into dictionary as our dictionary is currently empty
             print("loggedBoxes currently empty, populating...")
             boxMidpoint = tuple(getBoxMidpoint(box))
             #print(boxMidpoint)
-            loggedBoxes[boxMidpoint] = (0,0) # Store as a tuple, when we want to modify it, we will update the whole thing.
+            loggedBoxes[boxMidpoint] = (0,FCounter) # Store as a tuple, when we want to modify it, we will update the whole thing.
 
 
+    # Length of dictionary increases over time, we need to prune old boxes accordingly.
+    prunableEntries = [] # List to hold the entries we need to delete from the dictionary to stop it from growing
+
+    # Go through each item in the dictionary and check if it should be pruned
+    for midpoint, mpvalues in loggedBoxes.items():
+        trackC, recordedFrame = mpvalues
+
+        #print(f'Recorded: {recordedFrame}') # Debug
+        #print(f'FC: {FCounter}') # Debug
+
+        # If the last recorded frame is less than the current frame we should get rid of it as it is irrelevant for tracking (adjustable?)
+        if recordedFrame < FCounter - 1:
+
+            #print(f'Appending, {recordedFrame} < {FCounter-1}') # Debug
+
+            prunableEntries.append(midpoint) # Add the midpoint to delete into the array
+
+    for entry in prunableEntries:
+        del loggedBoxes[entry] # Go through the items we need to prune from the dictionary
+
+    #print(len(loggedBoxes))
+    #print(loggedBoxes)
 
     cv2.imshow("HumanAura", image)
-    cv2.waitKey(10)
+    cv2.waitKey(30)
     
 
 
@@ -279,7 +268,7 @@ cap = cv2.VideoCapture(videoPath)
 if not cap.isOpened():
         print("Error opening video file.")
 
-testCounter = 0
+FCounter = 0
 
 # Main loop to load video and perform inference using the functions
 while True:
@@ -295,10 +284,10 @@ while True:
     #drawBoundingBoxes(boundingBoxestoDraw)
     trackAndDraw(boundingBoxestoDraw)
 
-    testCounter += 1
+    FCounter += 1
 
-    # # Change to debug more frames
-    # if testCounter >= 5:
+    # Change to debug more frames
+    # if FCounter >= 5:
     #     break
 
 # Delete all windows
