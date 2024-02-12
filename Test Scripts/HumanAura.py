@@ -8,20 +8,24 @@ import os
 Configurations for the program, to be changed according to different scenarios
 '''
 
+print(os.getcwd())
+
 # Path to where model is located, must point to an ONNX file (only tested with static input tensor so far)
-modelPath = "ONNX Models/mobilenet2fixed.onnx"
+modelPath = "../ONNX Models/mobilenet2fixed.onnx"
 
 # Path to where the test frame is stored, used for debugging, inference and building up of the program
-imagePath = "testframe.jpg"
+imagePath = "../testframe.jpg"
 
 # Video path that points to the video we want to use for inference
-videoPath = "Videos/Browse4.mpg" # browse4.mpg was our test set on evaluation
+videoPath = "../Videos/Walk1.mpg" # browse4.mpg was our test set on evaluation
 
 # Detection Threshold, affects the sensitivity of the bounding boxes that are drawn.
 # Lower threshold = Less confidence needed to display BB on screen
 # Between 0.0 and 1.0
 # Set appropriately to avoid false detections
-globalThreshold = 0.65
+
+# Originally set to 0.65, MobileNet may do better with a lower detection threshold
+globalThreshold = 0.4
 
 # Image Height and Width, currently hardcoded but to be calculated later
 imHeight = 288
@@ -30,7 +34,9 @@ imWidth = 384
 # Number used to determine if the euclidean distance calculated between two boxes is small enough to be determined the same person.
 # Larger = larger euclidean distance to be identified as the same person.
 # Needs to be set appropriately to avoid false detections
-trackerThreshold = 30
+
+# Originally set to 30, may do better with a larger number regarding mobilenet
+trackerThreshold = 100 # 100 Seems to do okay, still suffers from flickering
 
 # Currently unused...
 currentBoundingBoxes = [] # Bounding box list for current frame

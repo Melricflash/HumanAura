@@ -7,14 +7,14 @@ import os
 
 
 # Change to use different models in inference
-modelPath = "ONNX Models/mobilenet2.onnx"
-modelPath2 = "ONNX Models/mobilenet2fixed.onnx"
+modelPath = "../ONNX Models/mobilenet2.onnx"
+modelPath2 = "../ONNX Models/mobilenet2fixed.onnx"
 
 # Image path that points to the test frame to be used
 imagePath = "testframe.jpg"
 
 # Video path that points to the video we want to use
-videoPath = "Videos/Browse4.mpg" # browse4.mpg was our test set on evaluation
+videoPath = "../Videos/Browse4.mpg" # browse4.mpg was our test set on evaluation
 
 # Detection Threshold, affects the sensitivity of the bounding boxes that are drawn. Lower threshold = Less confidence needed to display BB
 # Between 0.0 and 1.0
@@ -92,7 +92,7 @@ def extractBoundingBoxes(results, threshold):
 
 
 def drawBoundingBoxes(boxList):
-    #print(boxList)
+    print(boxList)
 
     for box in boxList:
         # Fetch the coordinates we need for each list we have in the boxList

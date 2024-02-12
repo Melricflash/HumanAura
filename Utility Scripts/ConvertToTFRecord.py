@@ -3,6 +3,7 @@ from PIL import Image
 import io
 import object_detection.utils.label_map_util as label_map_util
 import numpy as np
+import os
 
 # def clip(value, min_value, max_value):
 #     """Clip the value to be within the specified range."""
@@ -13,6 +14,11 @@ def create_tf_example(image_path, annotations, label_map_path):
     label_map = label_map_util.load_labelmap(label_map_path)
     categories = label_map_util.convert_label_map_to_categories(label_map, max_num_classes=90, use_display_name=True)
     category_index = label_map_util.create_category_index(categories)
+
+    # Note this is a hacky method but this I append the current working directory to the image path name to avoid name collisions as these are separate folder
+    # Should hopefully allow evaluation with multiple files...
+    currentDir = os.getcwd()
+    image_path = os.path.join(currentDir, image_path)
 
     with tf.io.gfile.GFile(image_path, 'rb') as fid:
         encoded_image = fid.read()
@@ -125,8 +131,8 @@ def parse_annotation_line(line):
         return parts[0], [float(parts[i]) for i in range(1, 5)] + ([] if len(parts) == 5 else [int(parts[5])])
     
 def main():
-    input_file = 'bww1gtAmended.txt'
-    output_path = 'browse_whilewaiting1.tfrecord'
+    input_file = 'br2gtAmended.txt'
+    output_path = 'browse2New.tfrecord'
     label_map_path = 'label_map.pbtxt'
 
     with open(input_file, 'r') as file:
