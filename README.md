@@ -1,5 +1,13 @@
-HumanAura - Simple Human Detection & Tracking system across a CCTV Source (FYP)
+# HumanAura - Simple Human Detection & Tracking system across a CCTV Source (FYP)
 
-The system uses TensorFlow Object Detection to fine tune an existing object detection model on a new dataset based on Human Surveillence to be able to detect just humans, also contains a system to track individual humans across multiple frames and associate a time on screen with them.
+HumanAura is a (FY) project designed to propose a solution for human detection and tracking **given limited resources** by using a 'lightweight' tracking algorithm. 
 
-Currently uses SSD-MobileNetV2, TensorFlow Object Detection API, TensorFlow GPU, ONNX Runtime, OpenCV Python. 
+We utilise the TensorFlow Object Detection API and pre-trained models from the TensorFlow Object Detection Model Zoo to fine-tune the models using the CAVIAR dataset set in a retail scenario.
+
+No models are supplied due to GitHub FS limits, but you are required to supply an **ONNX model** that has the **fixed input shape of [1,224,384,3]** to work (use ONNX utilities to convert the layer if needed)
+
+Models currently tested with:
+ - MobileNet SSD V2 (320x320)
+ - MobileNet SSD V2 + FPN (320x320)
+ - CentreNet ResNet 50
+ - EfficientDet D0
