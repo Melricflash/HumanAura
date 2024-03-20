@@ -11,13 +11,16 @@ Configurations for the program, to be changed according to different scenarios
 print(os.getcwd())
 
 # Path to where model is located, must point to an ONNX file (only tested with static input tensor so far)
-modelPath = "../ONNX Models/mobilenet2fixed.onnx"
+modelPath = "../ONNX Models/mnetFPN-5f.onnx"
+
+# Set to True if you are inferencing with a CentreNet model
+isCNet = False
 
 # Path to where the test frame is stored, used for debugging, inference and building up of the program
 imagePath = "../testframe.jpg"
 
 # Video path that points to the video we want to use for inference
-videoPath = "../Videos/Walk1.mpg" # browse4.mpg was our test set on evaluation
+videoPath = "../Videos/Browse4.mpg" # browse4.mpg was our test set on evaluation
 
 # Detection Threshold, affects the sensitivity of the bounding boxes that are drawn.
 # Lower threshold = Less confidence needed to display BB on screen
@@ -25,7 +28,7 @@ videoPath = "../Videos/Walk1.mpg" # browse4.mpg was our test set on evaluation
 # Set appropriately to avoid false detections
 
 # Originally set to 0.65, MobileNet may do better with a lower detection threshold
-globalThreshold = 0.4
+globalThreshold = 0.6
 
 # Image Height and Width, currently hardcoded but to be calculated later
 imHeight = 288
@@ -86,11 +89,11 @@ def boxDecoder(boxes):
 # Filter the relevant bounding boxes out according to the specified threshold score eg. >0.65
 # Decode the bounding boxes back into coordinates that can be used later
 def extractBoundingBoxes(results, threshold):
-    bbinfo = results[1] # (1,100,4) # Holds all bounding boxes created by model
-    confidenceinfo = results[4] #(1,) # Holds all confidences created by the model for each 100 bounding boxes
+    bbinfo = results[bbLocation] # (1,100,4) # Holds all bounding boxes created by model
+    confidenceinfo = results[confidenceLocation] #(1,) # Holds all confidences created by the model for each 100 bounding boxes
 
     # Filter out the relevant bounding boxes according to the threshold set in confidenceinfo and fetch the indices
-    boxIndices = np.where(confidenceinfo >= threshold)[1]
+    boxIndices = np.where(confidenceinfo >= threshold)[filterLocation]
     # Get the corresponding boxes from bbinfo, these will be the bounding boxes to display to opencv
     frameBoxes = bbinfo[0, boxIndices]
 
@@ -208,7 +211,7 @@ def trackAndDraw(boxList):
                     matchFound = True
                     # Increment the trackCounter
                     loggedBoxes[previousMP] = (trackCounter + 1, FCounter)
-                    cv2.putText(image, str(trackCounter), (xmin, ymin-5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,0,0), 2)
+                    cv2.putText(image, str(trackCounter/25), (xmin, ymin-5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,0,0), 2)
 
                     break
             
@@ -273,6 +276,16 @@ cap = cv2.VideoCapture(videoPath)
 # Returns an error if the video has an error
 if not cap.isOpened():
         print("Error opening video file.")
+
+# As centrenet outputs a different set of items in different places, we need to fetch them according to a different index
+if isCNet:
+    bbLocation = 0
+    confidenceLocation = 5
+    filterLocation = 0
+else:
+    bbLocation = 1
+    confidenceLocation = 4
+    filterLocation = 1
 
 FCounter = 0
 

@@ -21,11 +21,11 @@ def create_tf_example(image_path, annotations, label_map_path):
     image_path = os.path.join(currentDir, image_path)
 
     with tf.io.gfile.GFile(image_path, 'rb') as fid:
-        encoded_image = fid.read()
+        encoded_image = fid.read() # Open the encoded image so we can get its dimensions
 
     encoded_image_io = io.BytesIO(encoded_image)
     image = Image.open(encoded_image_io)
-    width, height = image.size
+    width, height = image.size # Get the width and height info needed for normalisation
 
     xmins = []
     xmaxs = []
@@ -40,6 +40,9 @@ def create_tf_example(image_path, annotations, label_map_path):
         # xmax = clip(annotation[1] / width, 0, 1)
         # ymin = clip(annotation[2] / height, 0, 1)
         # ymax = clip(annotation[3] / height, 0, 1)
+
+
+        # Fix any clipping issues where bounding boxes might be outside the image
 
         xmin = (annotation[0]/width)
         if xmin < 0.0:
@@ -65,7 +68,7 @@ def create_tf_example(image_path, annotations, label_map_path):
         elif ymax > 1.0:
             ymax = 1.0
 
-
+        # Fix any issues relating to bounding boxes drawn in reverse.
         xmin_new = min(xmin, xmax)
         xmax_new = max(xmin, xmax)
         ymin_new = min(ymin, ymax)
@@ -123,10 +126,11 @@ def create_tf_example(image_path, annotations, label_map_path):
 
     return tf_example
 
+# Utility function used to split a line into its filename, xmin, xmax, ymin, ymax
 def parse_annotation_line(line):
     parts = line.strip().split(' ')
     if parts[1] == 'nothing':
-        return parts[0], []
+        return parts[0], [] # Empty list if we have no annotations
     else:
         return parts[0], [float(parts[i]) for i in range(1, 5)] + ([] if len(parts) == 5 else [int(parts[5])])
     
@@ -134,25 +138,26 @@ def main():
     input_file = 'br2gtAmended.txt'
     output_path = 'browse2New.tfrecord'
     label_map_path = 'label_map.pbtxt'
-
+    
+    # Open the text file containing the annotations
     with open(input_file, 'r') as file:
         lines = file.readlines()
 
     tf_record_writer = tf.io.TFRecordWriter(output_path)
 
-    image_annotations = {}
-    for line in lines:
-        image_path, annotations = parse_annotation_line(line)
-        if image_path not in image_annotations:
-            image_annotations[image_path] = []
+    image_annotations = {} # Create an empty dictionary to hold our annotations in
+    for line in lines: # Iterate through all the lines in the text file
+        image_path, annotations = parse_annotation_line(line) # Parse each line so we have each coordinate and filename in its own variables
+        if image_path not in image_annotations: 
+            image_annotations[image_path] = [] # Assign an empty list to the dictionary for the frame as a key if we dont have any annotations to append
         if annotations:
-            image_annotations[image_path].append(annotations)
+            image_annotations[image_path].append(annotations) # Create a key in the dictionary for the frame holding a set of annotations, if we have multiple people then we will have more lists.
 
-    for image_path, annotations_list in image_annotations.items():
+    for image_path, annotations_list in image_annotations.items(): # Iterate through each key in the dictionary and send to create example
         tf_example = create_tf_example(image_path, annotations_list, label_map_path)
-        tf_record_writer.write(tf_example.SerializeToString())
+        tf_record_writer.write(tf_example.SerializeToString()) # Add information to the new tfrecord
 
-    tf_record_writer.close()
+    tf_record_writer.close() # Close the file when we are done with it
 
 if __name__ == '__main__':
     main()

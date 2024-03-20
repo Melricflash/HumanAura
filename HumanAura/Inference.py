@@ -7,11 +7,13 @@ import os
 
 
 # Change to use different models in inference
-modelPath = "../ONNX Models/mobilenet2.onnx"
-modelPath2 = "../ONNX Models/mobilenet2fixed.onnx"
+modelPath = "../ONNX Models/mnet-3f.onnx"
+
+# Set to True if inferencing with a CentreNet Model
+isCNet = False
 
 # Image path that points to the test frame to be used
-imagePath = "testframe.jpg"
+imagePath = "../testframe.jpg"
 
 # Video path that points to the video we want to use
 videoPath = "../Videos/Browse4.mpg" # browse4.mpg was our test set on evaluation
@@ -23,6 +25,7 @@ globalThreshold = 0.65
 # Image Height and Width, currently hardcoded but to be calculated later
 imHeight = 288
 imWidth = 384
+
 
 # Checks if the ONNX model supplied is legal and can be used
 def is_onnx_model_valid(path):
@@ -67,11 +70,11 @@ def boxDecoder(boxes):
 # Filter the relevant bounding boxes out according to the specified threshold score eg. >0.65
 # Decode the bounding boxes back into coordinates that can be used later
 def extractBoundingBoxes(results, threshold):
-    bbinfo = results[1] # (1,100,4) # Holds all bounding boxes created by model
-    confidenceinfo = results[4] #(1,) # Holds all confidences created by the model for each 100 bounding boxes
+    bbinfo = results[bbLocation] # (1,100,4) # Holds all bounding boxes created by model
+    confidenceinfo = results[confidenceLocation] #(1,) # Holds all confidences created by the model for each 100 bounding boxes
 
     # Filter out the relevant bounding boxes according to the threshold set in confidenceinfo and fetch the indices
-    boxIndices = np.where(confidenceinfo >= threshold)[1]
+    boxIndices = np.where(confidenceinfo >= threshold)[filterLocation]
     # Get the corresponding boxes from bbinfo, these will be the bounding boxes to display to opencv
     frameBoxes = bbinfo[0, boxIndices]
 
@@ -92,7 +95,7 @@ def extractBoundingBoxes(results, threshold):
 
 
 def drawBoundingBoxes(boxList):
-    print(boxList)
+    #print(boxList)
 
     for box in boxList:
         # Fetch the coordinates we need for each list we have in the boxList
@@ -116,7 +119,7 @@ def drawBoundingBoxes(boxList):
 
 # Attempt to load the specified model into memory
 # Using Static Input Tensor shows warnings when loading model?
-sess = ort.InferenceSession(modelPath2)
+sess = ort.InferenceSession(modelPath)
 input_name = sess.get_inputs()[0].name
 output_name = sess.get_outputs()[0].name
 
@@ -149,6 +152,15 @@ cap = cv2.VideoCapture(videoPath)
 # Returns an error if the video has an error
 if not cap.isOpened():
         print("Error opening video file.")
+
+if isCNet:
+    bbLocation = 0
+    confidenceLocation = 5
+    filterLocation = 0
+else:
+    bbLocation = 1
+    confidenceLocation = 4
+    filterLocation = 1
 
 
 # Main loop to load video and perform inference using the functions
