@@ -252,8 +252,9 @@ def trackAndDraw(boxList):
 
     #print(len(loggedBoxes))
     #print(loggedBoxes)
-
+    
     cv2.imshow("HumanAura", image)
+    # Set to 0 if you want to freeze on a frame
     cv2.waitKey(30)
     
 
