@@ -11,7 +11,7 @@ Configurations for the program, to be changed according to different scenarios
 print(os.getcwd())
 
 # Path to where model is located, must point to an ONNX file (only tested with static input tensor so far)
-modelPath = "../ONNX Models/mnetFPN-5f.onnx"
+modelPath = "../ONNX Models/mnetFPN-5f.onnx" # Default model is MobileNet FPN as it performed the best
 
 # Set to True if you are inferencing with a CentreNet model
 isCNet = False
@@ -207,7 +207,7 @@ def trackAndDraw(boxList):
                 #print(eDistance)
 
                 if eDistance < trackerThreshold:
-                    print("Match was found for box!")
+                    #print("Match was found for box!")
                     matchFound = True
                     # Increment the trackCounter
                     loggedBoxes[previousMP] = (trackCounter + 1, FCounter)
@@ -217,7 +217,7 @@ def trackAndDraw(boxList):
             
             # FrameCounter will only update if a match was found for that box, allows us to figure out if we need to prune
             if not matchFound:
-                print("No match was found for box!")
+                #print("No match was found for box!")
                 # No match for the frame was found, we add it to the database to track later
                 #loggedBoxes[tuple(currentMP)] = (0, newFrameCounter + 1)
                 loggedBoxes[tuple(currentMP)] = (0, FCounter) # Set 0 to set time tracked as 0s, recorded frame as last recorded frame
